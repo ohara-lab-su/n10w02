@@ -3,11 +3,6 @@
 """
 Generate n10w02_grpc_client.pyi.
 
-The .pyi file is generated from:
-- n10w02_grpc_client.N10W02GrpcClient
-- n10w02_ctrl.N10W02Ctrl
-- grpc_frame.grpc_client.GrpcClient
-
 Do not maintain n10w02_grpc_client.pyi by hand.
 """
 

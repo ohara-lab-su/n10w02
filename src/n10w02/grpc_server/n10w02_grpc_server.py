@@ -3,19 +3,11 @@
 """
 N10-W02 gRPC server launcher.
 
-This server exposes N10W02Ctrl directly through grpc_frame.
+N10W02Ctrl is exposed directly through grpc_frame.  No EventBus, no streaming,
+and no image-control reimplementation are used.
 
-Important:
-- N10W02Ctrl is the device-control implementation.
-- This server does not reimplement capture_bmp_bytes() or other device APIs.
-- This server does not use EventBus or stream delivery.
-- Each image transfer is a normal unary RPC:
+Image transfer is a normal unary RPC:
     client.capture_bmp_bytes() -> N10W02Ctrl.capture_bmp_bytes() -> bytes
-
-N10-W02 uses ORiN2 / CAO COM.  Therefore the server uses
-grpc_frame.grpc_com.create_com_grpc_server().  The N10W02Ctrl instance is
-created in ComExecutionRunner's COM thread, and every public method call is
-serialized through that runner.
 """
 
 from typing import Any, Optional
@@ -23,7 +15,10 @@ from typing import Any, Optional
 import grpc
 from grpc import channel_ready_future
 
-from n10w02.n10w02_ctrl import N10W02Ctrl
+try:
+    from n10w02.n10w02_ctrl import N10W02Ctrl
+except ImportError:
+    from n10w02_ctrl import N10W02Ctrl
 
 from grpc_frame.grpc_com import create_com_grpc_server
 from x_logger import XLogger
@@ -33,15 +28,7 @@ def _make_self_check_addr(
     grpc_host: str,
     grpc_port: int,
 ) -> str:
-    """Create a client-side address for local self-check.
-
-    Args:
-        grpc_host: Server bind host.
-        grpc_port: Server bind port.
-
-    Returns:
-        str: Address used by grpc.insecure_channel().
-    """
+    """Create a local client address for server self-check."""
     host = str(grpc_host)
 
     if host == "0.0.0.0":
@@ -53,6 +40,18 @@ def _make_self_check_addr(
     return "{0}:{1}".format(host, int(grpc_port))
 
 
+def _make_large_message_options(
+    max_message_mb: int,
+):
+    """Create gRPC options for BMP-sized unary messages."""
+    max_message_bytes = int(max_message_mb) * 1024 * 1024
+
+    return (
+        ("grpc.max_receive_message_length", max_message_bytes),
+        ("grpc.max_send_message_length", max_message_bytes),
+    )
+
+
 def n10w02_grpc_server(
     grpc_host: str,
     grpc_port: int,
@@ -61,22 +60,11 @@ def n10w02_grpc_server(
     password: str = "password",
     timeout_ms: int = 5000,
     instance_name: str = "N10-W02",
+    max_message_mb: int = 64,
     logger: Optional[Any] = None,
     log_level: Optional[str] = None,
 ) -> None:
-    """Start N10-W02 gRPC server.
-
-    Args:
-        grpc_host: gRPC bind host.
-        grpc_port: gRPC bind port.
-        camera_ip: N10-W02 camera IP address.
-        user: ORiN2 provider user name.
-        password: ORiN2 provider password.
-        timeout_ms: ORiN2 provider timeout in milliseconds.
-        instance_name: CAO controller instance name.
-        logger: Optional logger.
-        log_level: Log level string.
-    """
+    """Start N10-W02 gRPC server."""
     if logger is None:
         import logging
 
@@ -89,6 +77,7 @@ def n10w02_grpc_server(
         grpc_host=grpc_host,
         grpc_port=grpc_port,
     )
+    grpc_options = _make_large_message_options(max_message_mb=max_message_mb)
 
     server = None
     runner = None
@@ -102,13 +91,13 @@ def n10w02_grpc_server(
                 timeout_ms=timeout_ms,
                 instance_name=instance_name,
                 logger=logger,
-                # COM initialization is owned by ComExecutionRunner.
                 init_com=False,
             ),
             ready_timeout=20.0,
             max_workers=10,
             logger=logger,
             log_level=log_level,
+            grpc_options=grpc_options,
         )
 
         ret = server.add_insecure_port(bind_addr)
@@ -118,7 +107,10 @@ def n10w02_grpc_server(
         server.start()
         logger.info("gRPC start OK: {0}".format(bind_addr))
 
-        ch = grpc.insecure_channel(self_check_addr)
+        ch = grpc.insecure_channel(
+            self_check_addr,
+            options=grpc_options,
+        )
         channel_ready_future(ch).result(timeout=2.0)
         logger.info("gRPC self-check OK: {0}".format(self_check_addr))
 
@@ -153,6 +145,7 @@ if __name__ == "__main__":
     GRPC_HOST = "0.0.0.0"
     GRPC_PORT = 50051
     LOG_LEVEL = "INFO"
+    MAX_MESSAGE_MB = 64
 
     logger_ = XLogger(
         log_level=LOG_LEVEL,
@@ -163,6 +156,7 @@ if __name__ == "__main__":
         camera_ip=CAMERA_IP,
         grpc_host=GRPC_HOST,
         grpc_port=GRPC_PORT,
+        max_message_mb=MAX_MESSAGE_MB,
         logger=logger_,
         log_level=LOG_LEVEL,
     )

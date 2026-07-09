@@ -3,17 +3,8 @@
 """
 N10-W02 gRPC dynamic client.
 
-This client is intentionally thin.
-
-The client side:
-- does not know N10W02Ctrl implementation details
-- does not import stub / pb2 directly
-- uses only grpc_frame.GrpcClient public I/F
-- receives remote methods dynamically through Describe RPC
-
-Remote methods such as capture_bmp_bytes(), save_bmp(), one_shot_focus(),
-get_status(), connect(), and disconnect() are provided by N10W02Ctrl on the
-server side.
+The client is intentionally thin.  Remote methods are dynamically bound by
+grpc_frame.  N10W02Ctrl is not reimplemented on the client side.
 """
 
 from typing import Any, Optional
@@ -31,13 +22,21 @@ class N10W02GrpcClient(GrpcClient):
         logger: Optional[Any] = None,
         log_level: Optional[str] = None,
         timeout_sec: Optional[float] = None,
+        max_message_mb: int = 64,
     ) -> None:
+        max_message_bytes = int(max_message_mb) * 1024 * 1024
+        grpc_options = (
+            ("grpc.max_receive_message_length", max_message_bytes),
+            ("grpc.max_send_message_length", max_message_bytes),
+        )
+
         super().__init__(
             server_ip=server_ip,
             server_port=grpc_port,
             logger=logger,
             log_level=log_level,
             timeout_sec=timeout_sec,
+            grpc_options=grpc_options,
         )
 
 
@@ -55,6 +54,7 @@ if __name__ == "__main__":
         grpc_port=50051,
         logger=logger_,
         log_level=log_level_,
+        max_message_mb=64,
     )
 
     logger_.info("status: {0}".format(client.get_status()))
