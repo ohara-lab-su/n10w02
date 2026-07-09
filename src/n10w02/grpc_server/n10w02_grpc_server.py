@@ -23,10 +23,34 @@ from typing import Any, Optional
 import grpc
 from grpc import channel_ready_future
 
-from grpc_frame.grpc_com import create_com_grpc_server
 from n10w02.n10w02_ctrl import N10W02Ctrl
 
+from grpc_frame.grpc_com import create_com_grpc_server
 from x_logger import XLogger
+
+
+def _make_self_check_addr(
+    grpc_host: str,
+    grpc_port: int,
+) -> str:
+    """Create a client-side address for local self-check.
+
+    Args:
+        grpc_host: Server bind host.
+        grpc_port: Server bind port.
+
+    Returns:
+        str: Address used by grpc.insecure_channel().
+    """
+    host = str(grpc_host)
+
+    if host == "0.0.0.0":
+        host = "127.0.0.1"
+
+    if host == "::":
+        host = "[::1]"
+
+    return "{0}:{1}".format(host, int(grpc_port))
 
 
 def n10w02_grpc_server(
@@ -60,7 +84,12 @@ def n10w02_grpc_server(
         logging.basicConfig(level=log_level.upper())
         logger = logging.getLogger(__name__)
 
-    bind_addr = "{0}:{1}".format(grpc_host, grpc_port)
+    bind_addr = "{0}:{1}".format(grpc_host, int(grpc_port))
+    self_check_addr = _make_self_check_addr(
+        grpc_host=grpc_host,
+        grpc_port=grpc_port,
+    )
+
     server = None
     runner = None
 
@@ -89,9 +118,9 @@ def n10w02_grpc_server(
         server.start()
         logger.info("gRPC start OK: {0}".format(bind_addr))
 
-        ch = grpc.insecure_channel(bind_addr)
+        ch = grpc.insecure_channel(self_check_addr)
         channel_ready_future(ch).result(timeout=2.0)
-        logger.info("gRPC self-check OK")
+        logger.info("gRPC self-check OK: {0}".format(self_check_addr))
 
         server.wait_for_termination()
 
