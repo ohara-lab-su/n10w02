@@ -15,11 +15,7 @@ from typing import Any, Optional
 import grpc
 from grpc import channel_ready_future
 
-try:
-    from n10w02.n10w02_ctrl import N10W02Ctrl
-except ImportError:
-    from n10w02_ctrl import N10W02Ctrl
-
+from n10w02.n10w02_ctrl import N10W02Ctrl
 from grpc_frame.grpc_com import create_com_grpc_server
 from x_logger import XLogger
 
