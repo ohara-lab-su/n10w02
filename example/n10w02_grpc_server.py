@@ -30,6 +30,12 @@ if __name__ == "__main__":
         logger_name="N10W02GrpcServerCom",
     )
 
+    logger_.info(
+        f"[launcher] start: camera_ip={CAMERA_IP}, "
+        f"grpc_host={GRPC_HOST}, grpc_port={GRPC_PORT}, "
+        f"max_message_mb={MAX_MESSAGE_MB}"
+    )
+
     n10w02_grpc_server(
         camera_ip=CAMERA_IP,
         grpc_host=GRPC_HOST,

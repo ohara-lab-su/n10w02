@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import gc
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -63,6 +64,14 @@ class N10W02Ctrl:
             print(message, file=sys.stderr)
 
     def connect(self) -> bool:
+        connect_started = time.perf_counter()
+        self._log_info(
+            f"[N10W02Ctrl.connect] start: camera_ip={self._camera_ip}, "
+            f"timeout_ms={self._timeout_ms}, "
+            f"instance_name={self._instance_name}, "
+            f"init_com={self._init_com}"
+        )
+
         if pythoncom is None:
             raise RuntimeError("pythoncom が import できない。Windows + pywin32 + ORiN2 SDK 環境で実行する必要がある。")
 
@@ -71,10 +80,25 @@ class N10W02Ctrl:
 
         try:
             if self._init_com:
+                self._log_info("[N10W02Ctrl.connect] CoInitialize start")
                 pythoncom.CoInitialize()
                 self._com_initialized = True
+                self._log_info("[N10W02Ctrl.connect] CoInitialize complete")
+            else:
+                self._log_info(
+                    "[N10W02Ctrl.connect] CoInitialize skipped "
+                    "(initialized by COM runner)"
+                )
 
+            step_started = time.perf_counter()
+            self._log_info(
+                "[N10W02Ctrl.connect] Dispatch start: CAO.CaoEngine"
+            )
             self._cao_eng = win32com.client.Dispatch("CAO.CaoEngine")
+            self._log_info(
+                f"[N10W02Ctrl.connect] Dispatch complete: "
+                f"elapsed={time.perf_counter() - step_started:.3f}s"
+            )
 
             option = (
                 "Server={0},User={1},Password={2},Timeout={3}".format(
@@ -85,20 +109,49 @@ class N10W02Ctrl:
                 )
             )
 
+            step_started = time.perf_counter()
+            self._log_info(
+                f"[N10W02Ctrl.connect] AddController start: "
+                f"instance_name={self._instance_name}, "
+                f"provider={self.Provider}, camera_ip={self._camera_ip}"
+            )
             self._cao_ctrl = self._cao_eng.Workspaces(0).AddController(
                 self._instance_name,
                 self.Provider,
                 "",
                 option,
             )
+            self._log_info(
+                f"[N10W02Ctrl.connect] AddController complete: "
+                f"elapsed={time.perf_counter() - step_started:.3f}s"
+            )
 
+            step_started = time.perf_counter()
+            self._log_info(
+                "[N10W02Ctrl.connect] AddVariable start: IMAGE"
+            )
             self._var_image = self._cao_ctrl.AddVariable("IMAGE")
-            self._log_info("N10-W02 connected: {0}".format(self._camera_ip))
+            self._log_info(
+                f"[N10W02Ctrl.connect] AddVariable complete: "
+                f"elapsed={time.perf_counter() - step_started:.3f}s"
+            )
+
+            self._log_info(
+                f"[N10W02Ctrl.connect] complete: "
+                f"camera_ip={self._camera_ip}, "
+                f"total_elapsed={time.perf_counter() - connect_started:.3f}s"
+            )
             return True
 
         except Exception as e:
+            self._log_error(
+                f"[N10W02Ctrl.connect] failed: "
+                f"camera_ip={self._camera_ip}, "
+                f"elapsed={time.perf_counter() - connect_started:.3f}s, "
+                f"error={e}"
+            )
             self.disconnect()
-            raise RuntimeError("N10-W02 接続に失敗した: {0}".format(e))
+            raise RuntimeError(f"N10-W02 接続に失敗した: {e}")
 
     def disconnect(self) -> bool:
         try:
