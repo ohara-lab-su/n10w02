@@ -17,11 +17,11 @@ from n10w02.grpc_server import n10w02_grpc_server
 
 
 if __name__ == "__main__":
-    # CAMERA_IP = "10.170.10.42" # cobotta2
-    CAMERA_IP = "10.170.10.37"  # cobotta4
+    CAMERA_IP = "10.170.10.42" # cobotta2
+    # CAMERA_IP = "10.170.10.37"  # cobotta4
     # GRPC_HOST = "127.0.0.1"
-    # GRPC_HOST = "10.170.10.38"  # cobotta2/server2
-    GRPC_HOST = "10.170.10.41"  # cobotta4/server3
+    GRPC_HOST = "10.170.10.38"  # cobotta2/server2
+    # GRPC_HOST = "10.170.10.41"  # cobotta4/server3
     GRPC_PORT = 50051
     LOG_LEVEL = "INFO"
     MAX_MESSAGE_MB = 64
