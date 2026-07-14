@@ -3,11 +3,11 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "xdm1000"
+name = "n10w02"
 
-version = "0.2.5"
+version = "0.0.1"
 
-description = "cobotta ctrl server2 (using ORiN2)"
+description = "cannon n10w02 camera"
 authors = [
   { name="Kengo NAKADA", email="kengo.nakada@email.com" }
 ]
@@ -53,11 +53,11 @@ dependencies = [
 "sphinxcontrib-napoleon",
 "linkify-it-py",
 #
-#"grpcio",
-#"grpcio-tools",
-#"google",
-#"pygame",
-    "pyserial",
+"grpcio",
+"grpcio-tools",
+"google",
+"pygame",
+#    "pyserial",
 ]
 
 [tool.pytest.ini_options]

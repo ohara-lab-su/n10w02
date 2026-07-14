@@ -12,6 +12,8 @@ Image transfer is a normal unary RPC:
 
 from typing import Any, Optional
 
+import traceback
+
 import grpc
 from grpc import channel_ready_future
 
@@ -78,7 +80,16 @@ def n10w02_grpc_server(
     server = None
     runner = None
 
+    logger.info(
+        f"[n10w02_grpc_server] startup: bind_addr={bind_addr}, "
+        f"self_check_addr={self_check_addr}, camera_ip={camera_ip}, "
+        f"timeout_ms={timeout_ms}, max_message_mb={max_message_mb}"
+    )
+
     try:
+        logger.info(
+            "[n10w02_grpc_server] create_com_grpc_server start"
+        )
         server, runner, _proxy = create_com_grpc_server(
             ctrl_factory=lambda: N10W02Ctrl(
                 camera_ip=camera_ip,
@@ -95,43 +106,82 @@ def n10w02_grpc_server(
             log_level=log_level,
             grpc_options=grpc_options,
         )
+        logger.info(
+            "[n10w02_grpc_server] create_com_grpc_server complete"
+        )
 
+        logger.info(
+            f"[n10w02_grpc_server] add_insecure_port start: {bind_addr}"
+        )
         ret = server.add_insecure_port(bind_addr)
         if ret == 0:
             raise RuntimeError("bind failed: {0}".format(bind_addr))
+        logger.info(
+            f"[n10w02_grpc_server] add_insecure_port complete: "
+            f"bound_port={ret}"
+        )
 
+        logger.info("[n10w02_grpc_server] server.start start")
         server.start()
-        logger.info("gRPC start OK: {0}".format(bind_addr))
+        logger.info(f"[n10w02_grpc_server] server.start complete: {bind_addr}")
 
+        logger.info(
+            f"[n10w02_grpc_server] self-check start: {self_check_addr}"
+        )
         ch = grpc.insecure_channel(
             self_check_addr,
             options=grpc_options,
         )
         channel_ready_future(ch).result(timeout=2.0)
-        logger.info("gRPC self-check OK: {0}".format(self_check_addr))
+        logger.info(
+            f"[n10w02_grpc_server] self-check complete: "
+            f"{self_check_addr}"
+        )
 
+        logger.info(
+            "[n10w02_grpc_server] wait_for_termination start"
+        )
         server.wait_for_termination()
 
     except KeyboardInterrupt:
         logger.info("KeyboardInterrupt")
+    except Exception as e:
+        logger.error(
+            f"[n10w02_grpc_server] startup/runtime failed: {e}\n"
+            f"{traceback.format_exc()}"
+        )
+        raise
 
     finally:
+        logger.info("[n10w02_grpc_server] shutdown start")
         if runner is not None:
             try:
+                logger.info(
+                    "[n10w02_grpc_server] disconnect RPC start"
+                )
                 runner.call(
                     "disconnect",
                     tuple(),
                     {},
                     timeout=5.0,
                 )
-            except Exception:
-                pass
+                logger.info(
+                    "[n10w02_grpc_server] disconnect RPC complete"
+                )
+            except Exception as e:
+                logger.error(
+                    f"[n10w02_grpc_server] disconnect RPC failed: {e}"
+                )
 
         if server is not None:
+            logger.info("[n10w02_grpc_server] server.stop start")
             server.stop(grace=None)
+            logger.info("[n10w02_grpc_server] server.stop complete")
 
         if runner is not None:
+            logger.info("[n10w02_grpc_server] runner.stop start")
             runner.stop()
+            logger.info("[n10w02_grpc_server] runner.stop complete")
 
         logger.info("gRPC server stopped")
 
