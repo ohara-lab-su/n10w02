@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "n10w02"
 
-version = "0.0.1"
+version = "0.0.2"
 
 description = "cannon n10w02 camera"
 authors = [
@@ -37,7 +37,7 @@ dependencies = [
 "pytest-asyncio",
 #
 # "pytango",
-    "pyserial",
+#   "pyserial",
 #
 "pyyaml",
 "toml",

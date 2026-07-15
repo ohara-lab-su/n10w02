@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import gc
-import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
@@ -35,14 +34,24 @@ class N10W02Ctrl:
         timeout_ms: int = 5000,
         instance_name: str = "N10-W02",
         logger: Optional[Any] = None,
+        log_level: Optional[str] = None,
         init_com: bool = True,
     ) -> None:
+        # XLogger が存在しない時に仕方がないのでデフォルトの logging を使う
+        if logger is None:
+            import logging
+
+            log_level = log_level or "INFO"
+            logging.basicConfig(level=log_level.upper())
+            logger = logging.getLogger(__name__)
+
+        self._logger = logger
+
         self._camera_ip = camera_ip
         self._user = user
         self._password = password
         self._timeout_ms = timeout_ms
         self._instance_name = instance_name
-        self._logger = logger
 
         self._init_com = bool(init_com)
         self._com_initialized = False
@@ -51,21 +60,13 @@ class N10W02Ctrl:
         self._cao_ctrl = None
         self._var_image = None
 
+        # 起動時の接続失敗は例外を送出し、サーバー起動を停止させる。
         self.connect()
-
-    def _log_info(self, message: str) -> None:
-        if self._logger is not None:
-            self._logger.info(message)
-
-    def _log_error(self, message: str) -> None:
-        if self._logger is not None:
-            self._logger.error(message)
-        else:
-            print(message, file=sys.stderr)
 
     def connect(self) -> bool:
         connect_started = time.perf_counter()
-        self._log_info(
+
+        self._logger.info(
             f"[N10W02Ctrl.connect] start: camera_ip={self._camera_ip}, "
             f"timeout_ms={self._timeout_ms}, "
             f"instance_name={self._instance_name}, "
@@ -73,47 +74,53 @@ class N10W02Ctrl:
         )
 
         if pythoncom is None:
-            raise RuntimeError("pythoncom が import できない。Windows + pywin32 + ORiN2 SDK 環境で実行する必要がある。")
+            message = (
+                "pythoncom が import できない。"
+                "Windows + pywin32 + ORiN2 SDK 環境で実行する必要がある。"
+            )
+            self._logger.error(message)
+            raise RuntimeError(message)
 
         if win32com is None:
-            raise RuntimeError("win32com.client が import できない。pywin32 を確認する必要がある。")
+            message = (
+                "win32com.client が import できない。"
+                "pywin32 を確認する必要がある。"
+            )
+            self._logger.error(message)
+            raise RuntimeError(message)
 
         try:
             if self._init_com:
-                self._log_info("[N10W02Ctrl.connect] CoInitialize start")
+                self._logger.info("[N10W02Ctrl.connect] CoInitialize start")
                 pythoncom.CoInitialize()
                 self._com_initialized = True
-                self._log_info("[N10W02Ctrl.connect] CoInitialize complete")
+                self._logger.info("[N10W02Ctrl.connect] CoInitialize complete")
             else:
-                self._log_info(
+                self._logger.info(
                     "[N10W02Ctrl.connect] CoInitialize skipped "
                     "(initialized by COM runner)"
                 )
 
-            step_started = time.perf_counter()
-            self._log_info(
+            self._logger.info(
                 "[N10W02Ctrl.connect] Dispatch start: CAO.CaoEngine"
             )
             self._cao_eng = win32com.client.Dispatch("CAO.CaoEngine")
-            self._log_info(
-                f"[N10W02Ctrl.connect] Dispatch complete: "
-                f"elapsed={time.perf_counter() - step_started:.3f}s"
+            self._logger.info(
+                "[N10W02Ctrl.connect] Dispatch complete"
             )
 
-            option = (
-                "Server={0},User={1},Password={2},Timeout={3}".format(
-                    self._camera_ip,
-                    self._user,
-                    self._password,
-                    self._timeout_ms,
-                )
+            option = "Server={0},User={1},Password={2},Timeout={3}".format(
+                self._camera_ip,
+                self._user,
+                self._password,
+                self._timeout_ms,
             )
 
-            step_started = time.perf_counter()
-            self._log_info(
-                f"[N10W02Ctrl.connect] AddController start: "
+            self._logger.info(
+                "[N10W02Ctrl.connect] AddController start: "
                 f"instance_name={self._instance_name}, "
-                f"provider={self.Provider}, camera_ip={self._camera_ip}"
+                f"provider={self.Provider}, "
+                f"camera_ip={self._camera_ip}"
             )
             self._cao_ctrl = self._cao_eng.Workspaces(0).AddController(
                 self._instance_name,
@@ -121,46 +128,55 @@ class N10W02Ctrl:
                 "",
                 option,
             )
-            self._log_info(
-                f"[N10W02Ctrl.connect] AddController complete: "
-                f"elapsed={time.perf_counter() - step_started:.3f}s"
+            self._logger.info(
+                "[N10W02Ctrl.connect] AddController complete"
             )
 
-            step_started = time.perf_counter()
-            self._log_info(
+            self._logger.info(
                 "[N10W02Ctrl.connect] AddVariable start: IMAGE"
             )
             self._var_image = self._cao_ctrl.AddVariable("IMAGE")
-            self._log_info(
-                f"[N10W02Ctrl.connect] AddVariable complete: "
-                f"elapsed={time.perf_counter() - step_started:.3f}s"
+            self._logger.info(
+                "[N10W02Ctrl.connect] AddVariable complete: IMAGE"
             )
 
-            self._log_info(
-                f"[N10W02Ctrl.connect] complete: "
-                f"camera_ip={self._camera_ip}, "
-                f"total_elapsed={time.perf_counter() - connect_started:.3f}s"
+            elapsed = time.perf_counter() - connect_started
+            self._logger.info(
+                f"[N10W02Ctrl.connect] complete: elapsed={elapsed:.3f}s"
             )
             return True
 
         except Exception as e:
-            self._log_error(
-                f"[N10W02Ctrl.connect] failed: "
+            elapsed = time.perf_counter() - connect_started
+            self._logger.exception(
+                "[N10W02Ctrl.connect] failed: "
                 f"camera_ip={self._camera_ip}, "
-                f"elapsed={time.perf_counter() - connect_started:.3f}s, "
-                f"error={e}"
+                f"elapsed={elapsed:.3f}s, error={e}"
             )
             self.disconnect()
-            raise RuntimeError(f"N10-W02 接続に失敗した: {e}")
+            raise RuntimeError(f"N10-W02 接続に失敗した: {e}") from e
 
     def disconnect(self) -> bool:
+        self._logger.info("[N10W02Ctrl.disconnect] start")
+        result = True
+
         try:
             if self._cao_ctrl is not None:
                 del self._cao_ctrl
+        except Exception as e:
+            result = False
+            self._logger.exception(
+                f"[N10W02Ctrl.disconnect] controller release failed: {e}"
+            )
+
+        try:
             if self._cao_eng is not None:
                 del self._cao_eng
-        except Exception:
-            pass
+        except Exception as e:
+            result = False
+            self._logger.exception(
+                f"[N10W02Ctrl.disconnect] engine release failed: {e}"
+            )
 
         self._cao_ctrl = None
         self._cao_eng = None
@@ -169,12 +185,29 @@ class N10W02Ctrl:
         if self._com_initialized:
             try:
                 pythoncom.CoUninitialize()
-            except Exception:
-                pass
+            except Exception as e:
+                result = False
+                self._logger.exception(
+                    f"[N10W02Ctrl.disconnect] CoUninitialize failed: {e}"
+                )
             self._com_initialized = False
 
-        gc.collect()
-        return True
+        try:
+            gc.collect()
+        except Exception as e:
+            result = False
+            self._logger.exception(
+                f"[N10W02Ctrl.disconnect] gc.collect failed: {e}"
+            )
+
+        if result:
+            self._logger.info("[N10W02Ctrl.disconnect] complete")
+        else:
+            self._logger.error(
+                "[N10W02Ctrl.disconnect] completed with errors"
+            )
+
+        return result
 
     def __del__(self) -> None:
         try:
@@ -196,101 +229,213 @@ class N10W02Ctrl:
         try:
             return bytes(value)
         except Exception as e:
-            raise RuntimeError("IMAGE の戻り値を bytes に変換できない: {0}".format(e))
+            raise RuntimeError(
+                "IMAGE の戻り値を bytes に変換できない: {0}".format(e)
+            ) from e
 
     def one_shot_focus(self, timeout_ms: int = 5000) -> bool:
-        if self._cao_ctrl is None:
-            raise RuntimeError("N10-W02 が未接続である。")
+        self._logger.info(
+            f"[N10W02Ctrl.one_shot_focus] timeout_ms={timeout_ms}"
+        )
 
-        self._cao_ctrl.Execute("OneShotFocus", timeout_ms)
-        return True
+        try:
+            if self._cao_ctrl is None:
+                raise RuntimeError("N10-W02 が未接続である。")
+
+            self._cao_ctrl.Execute("OneShotFocus", timeout_ms)
+            return True
+        except Exception as e:
+            self._logger.exception(
+                f"[N10W02Ctrl.one_shot_focus] failed: {e}"
+            )
+            return False
 
     def one_shot_white_balance(self, timeout_ms: int = 5000) -> bool:
-        if self._cao_ctrl is None:
-            raise RuntimeError("N10-W02 が未接続である。")
+        self._logger.info(
+            "[N10W02Ctrl.one_shot_white_balance] "
+            f"timeout_ms={timeout_ms}"
+        )
 
-        self._cao_ctrl.Execute("OneShotWhiteBalance", timeout_ms)
-        return True
+        try:
+            if self._cao_ctrl is None:
+                raise RuntimeError("N10-W02 が未接続である。")
+
+            self._cao_ctrl.Execute("OneShotWhiteBalance", timeout_ms)
+            return True
+        except Exception as e:
+            self._logger.exception(
+                f"[N10W02Ctrl.one_shot_white_balance] failed: {e}"
+            )
+            return False
 
     def save_white_balance(self) -> bool:
-        if self._cao_ctrl is None:
-            raise RuntimeError("N10-W02 が未接続である。")
+        self._logger.info("[N10W02Ctrl.save_white_balance]")
 
-        self._cao_ctrl.Execute("SaveWhiteBalance")
-        return True
+        try:
+            if self._cao_ctrl is None:
+                raise RuntimeError("N10-W02 が未接続である。")
+
+            self._cao_ctrl.Execute("SaveWhiteBalance")
+            return True
+        except Exception as e:
+            self._logger.exception(
+                f"[N10W02Ctrl.save_white_balance] failed: {e}"
+            )
+            return False
 
     def get_variable(self, name: str) -> Any:
-        if self._cao_ctrl is None:
-            raise RuntimeError("N10-W02 が未接続である。")
+        self._logger.info(
+            f"[N10W02Ctrl.get_variable] name={name}"
+        )
 
-        var = self._cao_ctrl.AddVariable(name)
-        return var.Value
+        try:
+            if self._cao_ctrl is None:
+                raise RuntimeError("N10-W02 が未接続である。")
+
+            var = self._cao_ctrl.AddVariable(name)
+            return var.Value
+        except Exception as e:
+            self._logger.exception(
+                f"[N10W02Ctrl.get_variable] failed: name={name}, error={e}"
+            )
+            return False
 
     def set_variable(self, name: str, value: Any) -> bool:
-        if self._cao_ctrl is None:
-            raise RuntimeError("N10-W02 が未接続である。")
+        self._logger.info(
+            f"[N10W02Ctrl.set_variable] name={name}, value={value}"
+        )
 
-        var = self._cao_ctrl.AddVariable(name)
-        var.Value = value
-        return True
+        try:
+            if self._cao_ctrl is None:
+                raise RuntimeError("N10-W02 が未接続である。")
 
-    def capture_bmp_bytes(self, focus: bool = False) -> bytes:
-        if self._var_image is None:
-            raise RuntimeError("IMAGE 変数が未初期化である。")
+            var = self._cao_ctrl.AddVariable(name)
+            var.Value = value
+            return True
+        except Exception as e:
+            self._logger.exception(
+                "[N10W02Ctrl.set_variable] failed: "
+                f"name={name}, value={value}, error={e}"
+            )
+            return False
 
-        if focus:
-            self.one_shot_focus()
+    def capture_bmp_bytes(self, focus: bool = False) -> Union[bytes, bool]:
+        self._logger.info(
+            f"[N10W02Ctrl.capture_bmp_bytes] focus={focus}"
+        )
 
-        value = self._var_image.Value
-        return self._variant_to_bytes(value)
+        try:
+            if self._var_image is None:
+                raise RuntimeError("IMAGE 変数が未初期化である。")
+
+            if focus:
+                focus_result = self.one_shot_focus()
+                if focus_result is False:
+                    return False
+
+            value = self._var_image.Value
+            data = self._variant_to_bytes(value)
+            self._logger.info(
+                f"[N10W02Ctrl.capture_bmp_bytes] size={len(data)} bytes"
+            )
+            return data
+        except Exception as e:
+            self._logger.exception(
+                f"[N10W02Ctrl.capture_bmp_bytes] failed: {e}"
+            )
+            return False
 
     def save_bmp(
         self,
         output_path: Union[str, Path],
         focus: bool = False,
-    ) -> Path:
+    ) -> Union[Path, bool]:
         path = Path(output_path)
-        data = self.capture_bmp_bytes(focus=focus)
+        self._logger.info(
+            f"[N10W02Ctrl.save_bmp] path={path}, focus={focus}"
+        )
 
-        with open(str(path), "wb") as f:
-            f.write(data)
+        try:
+            data = self.capture_bmp_bytes(focus=focus)
+            if data is False:
+                return False
 
-        return path
+            with open(str(path), "wb") as f:
+                f.write(data)
+
+            return path
+        except Exception as e:
+            self._logger.exception(
+                f"[N10W02Ctrl.save_bmp] failed: path={path}, error={e}"
+            )
+            return False
 
     def capture_opencv(self, focus: bool = False) -> Any:
         """
         OpenCV の画像配列として取得する。
         cv2 と numpy が必要である。
         """
-        import cv2
-        import numpy as np
+        self._logger.info(
+            f"[N10W02Ctrl.capture_opencv] focus={focus}"
+        )
 
-        data = self.capture_bmp_bytes(focus=focus)
-        buf = np.frombuffer(data, dtype=np.uint8)
-        image = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+        try:
+            import cv2
+            import numpy as np
 
-        if image is None:
-            raise RuntimeError("OpenCV で画像を decode できない。保存された BMP を確認する必要がある。")
+            data = self.capture_bmp_bytes(focus=focus)
+            if data is False:
+                return False
 
-        return image
+            buf = np.frombuffer(data, dtype=np.uint8)
+            image = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+
+            if image is None:
+                raise RuntimeError(
+                    "OpenCV で画像を decode できない。"
+                    "保存された BMP を確認する必要がある。"
+                )
+
+            return image
+        except Exception as e:
+            self._logger.exception(
+                f"[N10W02Ctrl.capture_opencv] failed: {e}"
+            )
+            return False
 
     def save_png_by_opencv(
         self,
         output_path: Union[str, Path],
         focus: bool = False,
-    ) -> Path:
-        import cv2
-
+    ) -> Union[Path, bool]:
         path = Path(output_path)
-        image = self.capture_opencv(focus=focus)
+        self._logger.info(
+            "[N10W02Ctrl.save_png_by_opencv] "
+            f"path={path}, focus={focus}"
+        )
 
-        ok = cv2.imwrite(str(path), image)
-        if not ok:
-            raise RuntimeError("OpenCV による画像保存に失敗した: {0}".format(path))
+        try:
+            import cv2
 
-        return path
+            image = self.capture_opencv(focus=focus)
+            if image is False:
+                return False
 
-    def get_status(self) -> Dict[str, Any]:
+            ok = cv2.imwrite(str(path), image)
+            if not ok:
+                raise RuntimeError(
+                    "OpenCV による画像保存に失敗した: {0}".format(path)
+                )
+
+            return path
+        except Exception as e:
+            self._logger.exception(
+                "[N10W02Ctrl.save_png_by_opencv] failed: "
+                f"path={path}, error={e}"
+            )
+            return False
+
+    def get_status(self) -> Union[Dict[str, Any], bool]:
         names = [
             "@ORIGIN",
             "@HARDWARE",
@@ -303,14 +448,19 @@ class N10W02Ctrl:
             "TIMESTAMP",
         ]
 
-        result = {}
-        for name in names:
-            try:
-                result[name] = self.get_variable(name)
-            except Exception as e:
-                result[name] = "ERROR: {0}".format(e)
+        self._logger.info("[N10W02Ctrl.get_status]")
 
-        return result
+        try:
+            result = {}
+            for name in names:
+                result[name] = self.get_variable(name)
+
+            return result
+        except Exception as e:
+            self._logger.exception(
+                f"[N10W02Ctrl.get_status] failed: {e}"
+            )
+            return False
 
 
 if __name__ == "__main__":
