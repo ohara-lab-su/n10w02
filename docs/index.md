@@ -1,4 +1,5 @@
 # n10w02
+view on [github](https://github.com/ohara-lab-su/n10w02/) / [ohara-lab-su (doc)](https://ohara-lab-su.github.io/)
 
 cobotta のカメラをただの web カメラのように使う
 
