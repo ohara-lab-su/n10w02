@@ -19,7 +19,7 @@ from n10w02.grpc_server import n10w02_grpc_server
 if __name__ == "__main__":
     # CAMERA_IP = "10.170.10.42" # cobotta2
     # CAMERA_IP = "10.170.10.52" # cobotta3
-    CAMERA_IP = "10.170.10.37" # cobotta4
+    CAMERA_IP = "10.170.10.43" # cobotta4
     # GRPC_HOST = "127.0.0.1"
     # GRPC_HOST = "10.170.10.38" # cobotta2/server2
     # GRPC_HOST = "10.170.10.55"  # cobotta3/server4
