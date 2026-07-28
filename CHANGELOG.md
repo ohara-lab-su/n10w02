@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.0.2, 2026-07-15, nakada
+## v0.0.3, 2026-07-28, nakada
+
+- after cobotta3/4 setup
+ 
+## v0.0.2, 2026-07-15, nakada
 
 - improve
   - `N10W02Ctrl` に x_logger 対応を追加
@@ -9,11 +13,11 @@
     - 起動時の接続失敗のみ例外を送出
     - 起動後の制御処理は例外を内部で処理し、ログ出力後に `False` を返すよう変更
 
-## 0.0.1, 2026-07-15, nakada
+## v0.0.1, 2026-07-15, nakada
 
 - fix
 
-## 0.0.0, 2026-07-03, nakada
+## v0.0.0, 2026-07-03, nakada
  
 - Initial release
   - grpc_server
