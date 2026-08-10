@@ -9,7 +9,7 @@ streaming 対応後も既存の capture_bmp_bytes() API は変更されていな
 連続画像を利用する場合は n10w02_client_stream.py を使用する。
 """
 
-from n10w02.grpc_client import N10W02GrpcClient
+from n10w02.grpc_server.n10w02_grpc_client import N10W02GrpcClient
 
 
 if __name__ == "__main__":

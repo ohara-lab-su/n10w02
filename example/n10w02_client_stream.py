@@ -16,7 +16,7 @@ ESC または q キーで終了する。
 import cv2
 import numpy as np
 
-from n10w02.grpc_client import N10W02GrpcClient
+from n10w02.grpc_server.n10w02_grpc_client import N10W02GrpcClient
 
 
 if __name__ == "__main__":

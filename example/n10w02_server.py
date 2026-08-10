@@ -36,7 +36,7 @@ N10-W02 gRPC server launcher.
 """
 
 from x_logger import XLogger
-from n10w02.grpc_server import n10w02_grpc_server
+from n10w02.grpc_server.n10w02_grpc_server import n10w02_grpc_server
 
 
 if __name__ == "__main__":
