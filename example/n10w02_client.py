@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-N10-W02 gRPC dynamic client.
+N10-W02 gRPC client example (unary RPC).
 
-The client is intentionally thin.  Remote methods are dynamically bound by
-grpc_frame.  N10W02Ctrl is not reimplemented on the client side.
+従来どおり、1回の API 呼び出しで画像を1枚取得する例である。
+streaming 対応後も既存の capture_bmp_bytes() API は変更されていない。
+
+連続画像を利用する場合は n10w02_client_stream.py を使用する。
 """
 
-from typing import Any, Optional
-from n10w02.grpc_server import N10W02GrpcClient
+from n10w02.grpc_client import N10W02GrpcClient
 
 
 if __name__ == "__main__":
@@ -22,10 +23,10 @@ if __name__ == "__main__":
 
     client = N10W02GrpcClient(
         # server_ip="127.0.0.1",
-        # server_ip="10.170.10.38", # cobotta2/server2 (gRPC 1.54.3)
-        # server_ip="10.170.10.55", # cobotta2/server2 (gRPC 1.54.3)
-        # server_ip="10.170.10.41", # cobotta4/server3
-        server_ip="10.170.10.60", # cobotta4/server3
+        # server_ip="10.170.10.38",  # cobotta2/server2
+        # server_ip="10.170.10.55",  # cobotta3/server4
+        # server_ip="10.170.10.41",  # cobotta4/server3
+        server_ip="10.170.10.60",  # cobotta4/server5
         grpc_port=50051,
         logger=logger_,
         log_level=log_level_,
@@ -34,8 +35,13 @@ if __name__ == "__main__":
 
     logger_.info("status: {0}".format(client.get_status()))
 
+    # 従来の unary API。
+    # 1回の Call に対して BMP 画像1枚分の bytes が返る。
     image = client.capture_bmp_bytes(focus=False)
+
     with open("n10w02_capture.bmp", "wb") as f:
         f.write(image)
 
-    logger_.info("saved: n10w02_capture.bmp size={0}".format(len(image)))
+    logger_.info(
+        "saved: n10w02_capture.bmp size={0}".format(len(image))
+    )
