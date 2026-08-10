@@ -7,7 +7,7 @@ The client is intentionally thin.  Remote methods are dynamically bound by
 grpc_frame.  N10W02Ctrl is not reimplemented on the client side.
 """
 
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 from grpc_frame import GrpcClient
 
@@ -38,6 +38,21 @@ class N10W02GrpcClient(GrpcClient):
             timeout_sec=timeout_sec,
             grpc_options=grpc_options,
         )
+
+
+    def stream_bmp_bytes(
+        self,
+        fps: Optional[float] = None,
+        focus: bool = False,
+    ) -> Iterator[bytes]:
+        """BMP フレームを server-streaming で連続受信する。"""
+        for frame in self.stream_call(
+            "stream_bmp_bytes",
+            fps=fps,
+            focus=focus,
+        ):
+            yield frame
+
 
 
 if __name__ == "__main__":

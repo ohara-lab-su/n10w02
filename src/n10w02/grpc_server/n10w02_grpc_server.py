@@ -3,14 +3,19 @@
 """
 N10-W02 gRPC server launcher.
 
-N10W02Ctrl is exposed directly through grpc_frame.  No EventBus, no streaming,
-and no image-control reimplementation are used.
+N10W02Ctrl is exposed through grpc_frame for the existing unary API.
+Image streaming is provided separately by _N10W02Stream and uses the generic
+Control/StreamCall transport.
 
-Image transfer is a normal unary RPC:
+Existing image transfer remains unchanged:
     client.capture_bmp_bytes() -> N10W02Ctrl.capture_bmp_bytes() -> bytes
+
+Additional stream API:
+    client.stream_bmp_bytes() -> repeated capture_bmp_bytes() -> stream of bytes
 """
 
 from typing import Any, Optional
+import time
 
 import traceback
 
@@ -18,7 +23,8 @@ import grpc
 from grpc import channel_ready_future
 
 from n10w02.n10w02_ctrl import N10W02Ctrl
-from grpc_frame.grpc_com import create_com_grpc_server
+from grpc_frame.grpc_com import ComExecutionRunner, ThreadSafeCtrlProxy
+from grpc_frame.grpc_server import create_grpc_server
 from x_logger import XLogger
 
 
@@ -48,6 +54,40 @@ def _make_large_message_options(
         ("grpc.max_receive_message_length", max_message_bytes),
         ("grpc.max_send_message_length", max_message_bytes),
     )
+
+
+
+class _N10W02Stream:
+    """N10-W02 固有の画像ストリーム生成部。通信方式は grpc_frame に委譲する。"""
+
+    def __init__(self, ctrl_proxy: Any) -> None:
+        self._ctrl = ctrl_proxy
+
+    def stream_bmp_bytes(
+        self,
+        fps: Optional[float] = None,
+        focus: bool = False,
+    ):
+        """BMP 画像を連続取得して yield する。画像処理は行わない。"""
+        period = None
+        if fps is not None:
+            fps_value = float(fps)
+            if fps_value <= 0.0:
+                raise ValueError("fps must be > 0")
+            period = 1.0 / fps_value
+
+        first = True
+        while True:
+            started = time.monotonic()
+            yield self._ctrl.capture_bmp_bytes(
+                focus=bool(focus and first),
+            )
+            first = False
+
+            if period is not None:
+                remain = period - (time.monotonic() - started)
+                if remain > 0.0:
+                    time.sleep(remain)
 
 
 def n10w02_grpc_server(
@@ -88,9 +128,9 @@ def n10w02_grpc_server(
 
     try:
         logger.info(
-            "[n10w02_grpc_server] create_com_grpc_server start"
+            "[n10w02_grpc_server] create COM runner start"
         )
-        server, runner, _proxy = create_com_grpc_server(
+        runner = ComExecutionRunner(
             ctrl_factory=lambda: N10W02Ctrl(
                 camera_ip=camera_ip,
                 user=user,
@@ -100,14 +140,31 @@ def n10w02_grpc_server(
                 logger=logger,
                 init_com=False,
             ),
+            logger=logger,
+            log_level=log_level,
+        )
+        if not runner.wait_ready(timeout=20.0):
+            startup_error = runner.get_startup_error()
+            if startup_error:
+                raise RuntimeError(startup_error)
+            raise TimeoutError("ComExecutionRunner initialization timed out")
+
+        proxy = ThreadSafeCtrlProxy(
+            runner=runner,
             ready_timeout=20.0,
+        )
+        stream_obj = _N10W02Stream(proxy)
+
+        server = create_grpc_server(
+            ctrl_obj=proxy,
+            stream_obj=stream_obj,
             max_workers=10,
             logger=logger,
             log_level=log_level,
             grpc_options=grpc_options,
         )
         logger.info(
-            "[n10w02_grpc_server] create_com_grpc_server complete"
+            "[n10w02_grpc_server] create gRPC server complete"
         )
 
         logger.info(
