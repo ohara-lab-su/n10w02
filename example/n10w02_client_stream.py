@@ -31,9 +31,9 @@ if __name__ == "__main__":
     client = N10W02GrpcClient(
         # server_ip="127.0.0.1",
         # server_ip="10.170.10.38",  # cobotta2/server2
-        # server_ip="10.170.10.55",  # cobotta3/server4
+        server_ip="10.170.10.55",  # cobotta3/server4
         # server_ip="10.170.10.41",  # cobotta4/server3
-        server_ip="10.170.10.60",  # cobotta4/server5
+        # server_ip="10.170.10.60",  # cobotta4/server5
         grpc_port=50051,
         logger=logger_,
         log_level=log_level_,
