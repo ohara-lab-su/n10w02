@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "n10w02"
 
-version = "0.0.4"
+version = "0.0.5"
 
 description = "cannon n10w02 camera"
 authors = [
@@ -16,50 +16,50 @@ requires-python = ">=3.7"
 #requires-python = ">=3.8"
 #requires-python = ">=3.11"
 dependencies = [
-#"x_logger",
-"xlogger-py",
-"ese774_frame",
-#
-"setuptools",
-"python-dotenv",
-"fastapi",
-"fastapi-utils",
-"uvicorn",
-"pydantic",
-"starlette",
-"requests",
-"aiohttp",
-"httpx",
-"pywin32; sys_platform == 'win32'",
-# "pygame; sys_platform == 'win32'",
-"coloredlogs",
-"colorlog",
-#
-"pytest",
-"pytest-asyncio",
-#
-# "pytango",
-#   "pyserial",
-#
-"pyyaml",
-"toml",
-"tomli; python_version < '3.11'",
- #
-"importlib-metadata>=4.0; python_version < '3.8'",
-#
-"nest_asyncio",
-"sphinx",
-"myst-parser",
-"sphinx-autobuild",
-"sphinx-rtd-theme",
-"sphinxcontrib-napoleon",
-"linkify-it-py",
-#
-"grpcio",
-"grpcio-tools",
-"google",
-"pygame",
-#    "pyserial",
+    #"x_logger",
+    "xlogger-py",
+    "ese774-frame",
+    #
+    "setuptools",
+    "python-dotenv",
+    "fastapi",
+    "fastapi-utils",
+    "uvicorn",
+    "pydantic",
+    "starlette",
+    "requests",
+    "aiohttp",
+    "httpx",
+    "pywin32; sys_platform == 'win32'",
+    # "pygame; sys_platform == 'win32'",
+    "coloredlogs",
+    "colorlog",
+    #
+    "pytest",
+    "pytest-asyncio",
+    #
+    # "pytango",
+    #   "pyserial",
+    #
+    "pyyaml",
+    "toml",
+    "tomli; python_version < '3.11'",
+     #
+    "importlib-metadata>=4.0; python_version < '3.8'",
+    #
+    "nest_asyncio",
+    "sphinx",
+    "myst-parser",
+    "sphinx-autobuild",
+    "sphinx-rtd-theme",
+    "sphinxcontrib-napoleon",
+    "linkify-it-py",
+    #
+    "grpcio",
+    "grpcio-tools",
+    "google",
+    "pygame",
+    #    "pyserial",
 ]
 
 [tool.pytest.ini_options]
