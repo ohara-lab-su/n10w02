@@ -1,5 +1,9 @@
 # N10-W02 gRPC
 
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/ohara-lab-su/n10w02/blob/main/README.en.md)
+[![ja](https://img.shields.io/badge/lang-ja-yellow.svg)](https://github.com/ohara-lab-su/n10w02/blob/main/README.md)
+
+
 `N10W02Ctrl` をそのまま `grpc_frame` に載せる最小構成である。
 
 ## 修正点
