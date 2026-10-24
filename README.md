@@ -1,17 +1,17 @@
 # N10-W02 gRPC
 
-[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/ohara-lab-su/n10w02/blob/main/README.en.md)
-[![ja](https://img.shields.io/badge/lang-ja-yellow.svg)](https://github.com/ohara-lab-su/n10w02/blob/main/README.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/ohara-lab-su/n10w02/blob/main/README.md)
+[![ja](https://img.shields.io/badge/lang-ja-yellow.svg)](https://github.com/ohara-lab-su/n10w02/blob/main/README.ja.md)
 
 
-`N10W02Ctrl` をそのまま `grpc_frame` に載せる最小構成である。
+This is a minimal setup that exposes `N10W02Ctrl` directly through `grpc_frame`.
 
-## 修正点
+## Changes
 
-BMP が 8 MB 程度になるため、gRPC Python の既定受信上限 4 MB に当たる。  
-`grpc_frame` に `grpc_options` を渡す口を追加し、N10-W02 の server/client では 64 MB を指定する。
+BMP images are approximately 8 MB, exceeding the default 4 MB receive-message limit in gRPC Python.  
+Support for passing `grpc_options` has been added to `grpc_frame`, and the N10-W02 server and client are configured with a 64 MB limit.
 
-## 画像取得
+## Image Capture
 
 ```python
 client = N10W02GrpcClient(
@@ -26,11 +26,11 @@ with open("capture.bmp", "wb") as f:
     f.write(image)
 ```
 
-## サーバー
+## Server
 
 ```bash
 python n10w02_grpc_server.py
 ```
 
-`N10W02Ctrl` は `create_com_grpc_server()` に直接載せる。  
-EventBus、stream、画像ラッパーは使わない。
+`N10W02Ctrl` is passed directly to `create_com_grpc_server()`.  
+EventBus, streaming, and image wrappers are not used.
