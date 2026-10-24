@@ -1,0 +1,32 @@
+xlogger-py
+ese774-frame
+setuptools
+python-dotenv
+fastapi
+fastapi-utils
+uvicorn
+pydantic
+starlette
+requests
+aiohttp
+httpx
+pywin32; sys_platform == 'win32'
+coloredlogs
+colorlog
+pytest
+pytest-asyncio
+pyyaml
+toml
+tomli; python_version < '3.11'
+importlib-metadata>=4.0; python_version < '3.8'
+nest_asyncio
+sphinx
+myst-parser
+sphinx-autobuild
+sphinx-rtd-theme
+sphinxcontrib-napoleon
+linkify-it-py
+grpcio
+grpcio-tools
+google
+pygame
